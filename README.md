@@ -1,9 +1,11 @@
 # banner_view
 
-A new flutter package project.
+A flutter BannerView package project.
+
+## function
+[截屏](https://raw.githubusercontent.com/yangxiaoweihn/BannerView/master/screenshot/thumb.png)
+[视频](https://raw.githubusercontent.com/yangxiaoweihn/BannerView/master/screenshot/record.mp4)
 
 ## Getting Started
 
-For help getting started with Flutter, view our online [documentation](https://flutter.io/).
 
-For help on editing package code, view the [documentation](https://flutter.io/developing-packages/).
