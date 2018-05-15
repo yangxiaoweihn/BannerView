@@ -3,8 +3,8 @@
 A flutter BannerView package project.
 
 ## function
-[截屏](https://raw.githubusercontent.com/yangxiaoweihn/BannerView/master/screenshot/thumb.png)
-[视频](https://raw.githubusercontent.com/yangxiaoweihn/BannerView/master/screenshot/record.mp4)
+![截屏](https://raw.githubusercontent.com/yangxiaoweihn/BannerView/master/screenshot/thumb.png)
+![视频](https://raw.githubusercontent.com/yangxiaoweihn/BannerView/master/screenshot/record.mp4)
 
 ## Getting Started
 
