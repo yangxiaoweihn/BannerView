@@ -59,7 +59,6 @@ class _BannerViewState extends State<BannerView> {
         }
         new Future.delayed(duration).whenComplete(() {
             this._doChangeIndex();
-            print('-- time ok: $_currentIndex');
         });
     }
 
