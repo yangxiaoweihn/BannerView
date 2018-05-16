@@ -16,6 +16,7 @@ class BannerView extends StatefulWidget{
     final Widget indicatorNormal;
     final Widget indicatorSelected;
     final double indicatorMargin;
+    final ValueChanged onPageChanged;
 
     BannerView(this.banners, {
         Key key,
@@ -25,6 +26,7 @@ class BannerView extends StatefulWidget{
         this.indicatorNormal,
         this.indicatorSelected,
         this.indicatorMargin = 5.0,
+        this.onPageChanged,
     }): 
         assert(banners?.isNotEmpty ?? true), 
         assert(null != indicatorMargin),
@@ -117,6 +119,9 @@ class _BannerViewState extends State<BannerView> {
             itemCount: banners.length,  
             onPageChanged: (index) {
                 this._currentIndex = index;
+                if(null != widget.onPageChanged) {
+                    widget.onPageChanged(index);
+                }
             },
         );
     }
