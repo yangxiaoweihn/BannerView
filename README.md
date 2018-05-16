@@ -7,5 +7,8 @@ A flutter BannerView package project.
 ![视频](https://raw.githubusercontent.com/yangxiaoweihn/BannerView/master/screenshot/gif.gif)
 
 ## Getting Started
-
+```dart
+    import 'package:banner_view/banner_view.dart';
+    new BannerView();
+```
 
