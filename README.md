@@ -11,4 +11,4 @@ A flutter BannerView package project.
     import 'package:banner_view/banner_view.dart';
     new BannerView();
 ```
-
+## Flutter QQ group ( 714494675 )
