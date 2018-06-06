@@ -2,6 +2,8 @@ library banner_view;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
+import 'indicator/IndicatorWidget.dart';
 //指示器容器构建器
 ///[indicatorWidget] 指示器控件，需要指示器容器添加到具体位置
 typedef Widget IndicatorContainerBuilder(BuildContext context, Widget indicatorWidget);
@@ -15,6 +17,7 @@ class BannerView extends StatefulWidget{
     final IndicatorContainerBuilder indicatorBuilder;
     final Widget indicatorNormal;
     final Widget indicatorSelected;
+    //the margin of between indicator items
     final double indicatorMargin;
     final ValueChanged onPageChanged;
 
@@ -38,19 +41,20 @@ class BannerView extends StatefulWidget{
 
 class _BannerViewState extends State<BannerView> {
 
-    List<Widget> banners;
-    Duration duration;
-    PageController pageController;
+    List<Widget> _banners;
+    Duration _duration;
+    PageController _pageController;
     int _currentIndex = 0;
+
     @override
     void initState() {
         super.initState();
-        this.banners = widget.banners;
+        this._banners = widget.banners;
         final int initIndex = widget.initIndex;
         this._currentIndex = initIndex;
 
-        this.duration = new Duration(seconds: widget.changeSeconds);
-        this.pageController = new PageController(initialPage: initIndex);
+        this._duration = new Duration(seconds: widget.changeSeconds);
+        this._pageController = new PageController(initialPage: initIndex);
         
         this._nextBannerTask();
     }
@@ -59,7 +63,7 @@ class _BannerViewState extends State<BannerView> {
         if(!mounted) {
             return;
         }
-        new Future.delayed(duration).whenComplete(() {
+        new Future.delayed(_duration).whenComplete(() {
             this._doChangeIndex();
         });
     }
@@ -73,13 +77,13 @@ class _BannerViewState extends State<BannerView> {
         }else{
             this._currentIndex--;
         }
-        this._currentIndex = this._currentIndex % banners.length;
+        this._currentIndex = this._currentIndex % _banners.length;
         if(0 == this._currentIndex) {
-            this.pageController.jumpToPage(this._currentIndex);
+            this._pageController.jumpToPage(this._currentIndex);
             this._nextBannerTask();
             setState(() {});
         }else{
-            this.pageController.animateToPage(
+            this._pageController.animateToPage(
                 this._currentIndex, 
                 duration: new Duration(milliseconds: 500),
                 curve: Curves.linear
@@ -108,15 +112,15 @@ class _BannerViewState extends State<BannerView> {
         );
     }
 
-    //Banner容器
+    //Banner container
     Widget _renderBannerBody() {
 
         return new PageView.builder(
             itemBuilder: (context, index) {
-                return banners[index];
+                return _banners[index];
             },  
-            controller: this.pageController,
-            itemCount: banners.length,  
+            controller: this._pageController,
+            itemCount: _banners.length,  
             onPageChanged: (index) {
                 this._currentIndex = index;
                 if(null != widget.onPageChanged) {
@@ -126,69 +130,21 @@ class _BannerViewState extends State<BannerView> {
         );
     }
 
-    //指示器容器
     Widget _renderIndicator() {
         
-        Widget smallContainer = new Container(
-            // color: Colors.purple[100],
-            child: new Row(
-                mainAxisSize: MainAxisSize.min,
-                children: _renderIndicatorTag(),
-            ),
+        return new IndicatorWidget(
+            size: this._banners.length,
+            currentIndex: this._currentIndex,
+            indicatorBuilder: this.widget.indicatorBuilder,
+            indicatorNormal: this.widget.indicatorNormal,
+            indicatorSelected: this.widget.indicatorSelected,
+            indicatorMargin: this.widget.indicatorMargin,
         );
-        if(null != widget.indicatorBuilder) {
-            return widget.indicatorBuilder(context, smallContainer);
-        }
-
-        return new Align(
-            alignment: Alignment.bottomCenter,
-            child: new Opacity(
-                opacity: 0.5,
-                child: new Container(
-                    height: 40.0,
-                    padding: new EdgeInsets.symmetric(horizontal: 16.0),
-                    color: Colors.black45,
-                    alignment: Alignment.centerRight,
-                    child: smallContainer,
-                ),
-            ),
-        );
-    }
-
-    //指示器item标签
-    List<Widget> _renderIndicatorTag() {
-        List<Widget> indicators = [];
-        final int len = banners.length;
-        Widget selected = widget.indicatorSelected ?? IndicatorUtil.generateIndicatorItem(normal: false);
-        Widget normal = widget.indicatorNormal ?? IndicatorUtil.generateIndicatorItem(normal: true);
-
-        for(var index = 0; index < len; index++) {
-            indicators.add(index == _currentIndex ? selected : normal);
-            if(index != len - 1) {
-                indicators.add(new SizedBox(width: widget.indicatorMargin,));
-            }
-        }
-
-        return indicators;
     }
 
     @override
     void dispose() {
-        pageController?.dispose();
+        _pageController?.dispose();
         super.dispose();
-    }
-}
-
-class IndicatorUtil {
-    static Widget generateIndicatorItem({bool normal = true, double indicatorSize = 8.0}) {
-
-        return new Container(
-            width: indicatorSize,
-            height: indicatorSize,
-            decoration: new BoxDecoration(
-                shape: BoxShape.circle,
-                color: normal ? Colors.white : Colors.red,
-            ),
-        );
     }
 }
