@@ -8,6 +8,7 @@ import 'indicator/IndicatorWidget.dart';
 ///[indicatorWidget] indicator widget, position the indicator widget into container
 typedef Widget IndicatorContainerBuilder(BuildContext context, Widget indicatorWidget);
 
+const String TAG = 'BannerView';
 /// Created by yangxiaowei
 /// BannerView
 class BannerView extends StatefulWidget{
@@ -137,9 +138,10 @@ class _BannerViewState extends State<BannerView> {
                 if(!mounted) {
                     return;
                 }
-                print('=========animationEnd');
-                this._nextBannerTask();
-                setState(() {});
+
+                _Logger.d(TAG, '=========animationEnd');
+                // this._nextBannerTask();
+                // setState(() {});
             });
         }
     }
@@ -162,7 +164,6 @@ class _BannerViewState extends State<BannerView> {
 
     //tack the user scroll callback count in a series
     int _seriesUserScrollRecordCount = 0;
-    PageMetrics _seriesUserScrollPageMetricsStart;
     /// Banner container
     Widget _renderBannerBody() {
 
@@ -173,7 +174,7 @@ class _BannerViewState extends State<BannerView> {
                 return new GestureDetector(
                     child: widget,
                     onTapDown: (detail) {
-                        print('**********   onTapDown');
+                        _Logger.d(TAG, '**********   onTapDown');
                         this._cancel(manual: true);
                     }, 
                 );
@@ -181,9 +182,10 @@ class _BannerViewState extends State<BannerView> {
             controller: this._pageController,
             itemCount: this._banners.length,  
             onPageChanged: (index) {
-                print('*********** changed');
+                _Logger.d(TAG, '**********   changed');
                 this._currentIndex = index;
                 if(!(this._timer?.isActive ?? false)) {
+                    this._nextBannerTask();
                     setState(() {});
                 }
                 if(null != widget.onPageChanged) {
@@ -196,18 +198,23 @@ class _BannerViewState extends State<BannerView> {
             child: pageView,
             onNotification: (notification) {
                 if(notification is UserScrollNotification) {
-                    UserScrollNotification sn = notification as UserScrollNotification;
+                    UserScrollNotification sn = notification;
                     
                     PageMetrics pm = sn.metrics;
                     var page = pm.page;
                     var depth = sn.depth;
                     
                     var left = page % (page.round());
+                    if(_seriesUserScrollRecordCount == 0) {
+                        _Logger.d(TAG, '**********   ^^^^  用户手动滑动开始');
+                        this._cancel(manual: true);
+                    }
                     if(depth == 0) {
-                        print('**  ${pm.extentBefore}  ${pm.extentAfter} : countP: $_seriesUserScrollRecordCount');
-                        if(left == 0/*pm.extentBefore == startPm.extentBefore && pm.extentAfter == startPm.extentAfter*/) {
+                        _Logger.d(TAG, '**  ${pm.extentBefore}  ${pm.extentAfter} : countP: $_seriesUserScrollRecordCount');
+                        
+                        if(left == 0) {
                             if (_seriesUserScrollRecordCount != 0) {
-                                print('^^^^  用户手动滑动结束');
+                                _Logger.d(TAG, '**********   ^^^^  用户手动滑动结束');
                                 _seriesUserScrollRecordCount = 0;
                                 _canceledByManual = false;
                                 this._nextBannerTask();
@@ -221,10 +228,10 @@ class _BannerViewState extends State<BannerView> {
                 }
 
                 if(notification is ScrollUpdateNotification) {
-                    ScrollUpdateNotification sn = notification as ScrollUpdateNotification;
+                    ScrollUpdateNotification sn = notification;
                     
                     if(widget.cycleRolling && sn.metrics.atEdge) {
-                        print('>>>   had at edge');
+                        _Logger.d(TAG, '>>>   had at edge');
                         if(this._canceledByManual) {
                             return;
                         }
@@ -248,7 +255,6 @@ class _BannerViewState extends State<BannerView> {
         
         int index = widget.cycleRolling ? this._currentIndex - 1 : this._currentIndex;
         index = index <= 0 ? 0 : index;
-        // print('----currentIndex: $_currentIndex');
         return new IndicatorWidget(
             size: this._originBanners.length,
             currentIndex: index,
@@ -264,5 +270,14 @@ class _BannerViewState extends State<BannerView> {
         _pageController?.dispose();
         _cancel();
         super.dispose();
+    }
+}
+
+class _Logger {
+    static bool debug = true;
+    static void d(String tag, String msg) {
+        if(debug) {
+            print('$tag - $msg');
+        }
     }
 }
