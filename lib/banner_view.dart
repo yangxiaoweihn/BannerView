@@ -4,44 +4,63 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'indicator/IndicatorWidget.dart';
-//指示器容器构建器
-///[indicatorWidget] 指示器控件，需要指示器容器添加到具体位置
+//indicator container builder
+///[indicatorWidget] indicator widget, position the indicator widget into container
 typedef Widget IndicatorContainerBuilder(BuildContext context, Widget indicatorWidget);
+
+/// Created by yangxiaowei
+/// BannerView
 class BannerView extends StatefulWidget{
     
     final List<Widget> banners;
-    //初始页面索引
+    //init index
     final int initIndex;
-    //几秒进行切换
-    final int changeSeconds;
+    //switch interval
+    final Duration intervalDuration;
+    //animation duration
+    final Duration animationDuration;
     final IndicatorContainerBuilder indicatorBuilder;
     final Widget indicatorNormal;
     final Widget indicatorSelected;
     //the margin of between indicator items
     final double indicatorMargin;
+    final PageController controller;
+    //whether cycyle rolling
+    final bool cycleRolling;
+    //whether auto rolling
+    final bool autoRolling;
     final ValueChanged onPageChanged;
 
     BannerView(this.banners, {
         Key key,
         this.initIndex = 0, 
-        this.changeSeconds = 1,
+        this.intervalDuration = const Duration(seconds: 3),
+        this.animationDuration = const Duration(milliseconds: 500),
         this.indicatorBuilder,
         this.indicatorNormal,
         this.indicatorSelected,
         this.indicatorMargin = 5.0,
+        this.controller,
+        this.cycleRolling = true,
+        this.autoRolling = true,
         this.onPageChanged,
     }): 
         assert(banners?.isNotEmpty ?? true), 
         assert(null != indicatorMargin),
+        assert(null != intervalDuration),
+        assert(null != animationDuration),
+        assert(null != cycleRolling),
         super(key: key);
 
     @override
     _BannerViewState createState() => new _BannerViewState();
 }
 
+/// Created by yangxiaowei
 class _BannerViewState extends State<BannerView> {
 
-    List<Widget> _banners;
+    List<Widget> _originBanners = [];
+    List<Widget> _banners = [];
     Duration _duration;
     PageController _pageController;
     int _currentIndex = 0;
@@ -49,35 +68,62 @@ class _BannerViewState extends State<BannerView> {
     @override
     void initState() {
         super.initState();
-        this._banners = widget.banners;
-        final int initIndex = widget.initIndex;
-        this._currentIndex = initIndex;
+        this._originBanners = widget.banners;
+        this._banners = this._banners..addAll(this._originBanners);
+        
+        if(widget.cycleRolling) {
+            Widget first = this._originBanners[0];
+            Widget last = this._originBanners[this._originBanners.length - 1];
+            
+            this._banners.insert(0, last);
+            this._banners.add(first);
+            this._currentIndex = widget.initIndex + 1;
+        }else {
+            this._currentIndex = widget.initIndex;
+        }
 
-        this._duration = new Duration(seconds: widget.changeSeconds);
-        this._pageController = new PageController(initialPage: initIndex);
+        this._duration = widget.intervalDuration;
+        this._pageController = widget.controller ?? PageController(initialPage: this._currentIndex);
         
         this._nextBannerTask();
     }
 
+    Timer _timer;
     void _nextBannerTask() {
         if(!mounted) {
             return;
         }
-        new Future.delayed(_duration).whenComplete(() {
+
+        if(!widget.autoRolling) {
+            return;
+        }
+
+        this._cancel(manual: false);
+        _timer = new Timer(_duration, () {
             this._doChangeIndex();
         });
+    }
+
+    bool _canceledByManual = false;
+    /// [manual] 是否手动停止
+    void _cancel({bool manual = false}) {
+        _timer?.cancel();
+        if(manual) {
+            this._canceledByManual = true;
+        }
     }
 
     void _doChangeIndex({bool increment = true}) {
         if(!mounted) {
             return;
         }
+        this._canceledByManual = false;
         if(increment) {
             this._currentIndex++;
         }else{
             this._currentIndex--;
         }
-        this._currentIndex = this._currentIndex % _banners.length;
+        this._currentIndex = this._currentIndex % this._banners.length;
         if(0 == this._currentIndex) {
             this._pageController.jumpToPage(this._currentIndex);
             this._nextBannerTask();
@@ -85,12 +131,13 @@ class _BannerViewState extends State<BannerView> {
         }else{
             this._pageController.animateToPage(
                 this._currentIndex, 
-                duration: new Duration(milliseconds: 500),
+                duration: widget.animationDuration,
                 curve: Curves.linear
             ).whenComplete(() {
                 if(!mounted) {
                     return;
                 }
+                print('=========animationEnd');
                 this._nextBannerTask();
                 setState(() {});
             });
@@ -103,6 +150,7 @@ class _BannerViewState extends State<BannerView> {
         return this._generateBody();
     }
 
+    /// compose the body, banner view and indicator view
     Widget _generateBody() {
         return new Stack(
             children: <Widget>[
@@ -112,29 +160,98 @@ class _BannerViewState extends State<BannerView> {
         );
     }
 
-    //Banner container
+    //tack the user scroll callback count in a series
+    int _seriesUserScrollRecordCount = 0;
+    PageMetrics _seriesUserScrollPageMetricsStart;
+    /// Banner container
     Widget _renderBannerBody() {
 
-        return new PageView.builder(
+        Widget pageView = new PageView.builder(
             itemBuilder: (context, index) {
-                return _banners[index];
+
+                Widget widget = this._banners[index];
+                return new GestureDetector(
+                    child: widget,
+                    onTapDown: (detail) {
+                        print('**********   onTapDown');
+                        this._cancel(manual: true);
+                    }, 
+                );
             },  
             controller: this._pageController,
-            itemCount: _banners.length,  
+            itemCount: this._banners.length,  
             onPageChanged: (index) {
+                print('*********** changed');
                 this._currentIndex = index;
+                if(!(this._timer?.isActive ?? false)) {
+                    setState(() {});
+                }
                 if(null != widget.onPageChanged) {
                     widget.onPageChanged(index);
+                }
+            },
+            physics: new ClampingScrollPhysics(),
+        );
+        return new NotificationListener(
+            child: pageView,
+            onNotification: (notification) {
+                if(notification is UserScrollNotification) {
+                    UserScrollNotification sn = notification as UserScrollNotification;
+                    
+                    PageMetrics pm = sn.metrics;
+                    var page = pm.page;
+                    var depth = sn.depth;
+                    
+                    var left = page % (page.round());
+                    if(depth == 0) {
+                        print('**  ${pm.extentBefore}  ${pm.extentAfter} : countP: $_seriesUserScrollRecordCount');
+                        if(left == 0/*pm.extentBefore == startPm.extentBefore && pm.extentAfter == startPm.extentAfter*/) {
+                            if (_seriesUserScrollRecordCount != 0) {
+                                print('^^^^  用户手动滑动结束');
+                                _seriesUserScrollRecordCount = 0;
+                                _canceledByManual = false;
+                                this._nextBannerTask();
+                            }else {
+                                _seriesUserScrollRecordCount ++;
+                            }
+                        }else {
+                            _seriesUserScrollRecordCount ++;
+                        }
+                    }
+                }
+
+                if(notification is ScrollUpdateNotification) {
+                    ScrollUpdateNotification sn = notification as ScrollUpdateNotification;
+                    
+                    if(widget.cycleRolling && sn.metrics.atEdge) {
+                        print('>>>   had at edge');
+                        if(this._canceledByManual) {
+                            return;
+                        }
+                        try{
+                            if(this._currentIndex == 0) {
+                                this._pageController.jumpToPage(this._banners.length - 2);
+                            }else if(this._currentIndex == this._banners.length - 1) {
+                                this._pageController.jumpToPage(1);
+                            }
+                        }catch (e){
+                            print('Exception: ${e?.toString()}');
+                        }
+                    }
                 }
             },
         );
     }
 
+    /// indicator widget
     Widget _renderIndicator() {
         
+        int index = widget.cycleRolling ? this._currentIndex - 1 : this._currentIndex;
+        index = index <= 0 ? 0 : index;
+        // print('----currentIndex: $_currentIndex');
         return new IndicatorWidget(
-            size: this._banners.length,
-            currentIndex: this._currentIndex,
+            size: this._originBanners.length,
+            currentIndex: index,
             indicatorBuilder: this.widget.indicatorBuilder,
             indicatorNormal: this.widget.indicatorNormal,
             indicatorSelected: this.widget.indicatorSelected,
@@ -145,6 +262,7 @@ class _BannerViewState extends State<BannerView> {
     @override
     void dispose() {
         _pageController?.dispose();
+        _cancel();
         super.dispose();
     }
 }
