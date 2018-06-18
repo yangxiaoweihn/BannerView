@@ -1,10 +1,18 @@
 # banner_view
 
 A flutter BannerView package project.
-
+## Demo
+Visit Demo in ![here](https://github.com/yangxiaoweihn/BannerViewExample).
 ## function
-![截屏](https://raw.githubusercontent.com/yangxiaoweihn/BannerView/master/screenshot/thumb.png)
-![视频](https://raw.githubusercontent.com/yangxiaoweihn/BannerView/master/screenshot/gif.gif)
+<table> 
+    <tr>
+        <td><img src="https://raw.githubusercontent.com/yangxiaoweihn/BannerView/master/screenshot/device-s-image-0.jpg" /></td>
+        <td><img src="https://raw.githubusercontent.com/yangxiaoweihn/BannerView/master/screenshot/device-s-image-1.jpg" /></td>
+    </tr>
+    <tr>
+        <td><img src="https://raw.githubusercontent.com/yangxiaoweihn/BannerView/master/screenshot/device-s-gif-0.gif" /></td>
+    </tr>
+</table>
 
 ## Getting Started
 ```dart

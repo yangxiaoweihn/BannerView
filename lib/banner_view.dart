@@ -30,12 +30,13 @@ class BannerView extends StatefulWidget{
     final bool cycleRolling;
     //whether auto rolling
     final bool autoRolling;
+    final Curve curve;
     final ValueChanged onPageChanged;
 
     BannerView(this.banners, {
         Key key,
         this.initIndex = 0, 
-        this.intervalDuration = const Duration(seconds: 3),
+        this.intervalDuration = const Duration(seconds: 1),
         this.animationDuration = const Duration(milliseconds: 500),
         this.indicatorBuilder,
         this.indicatorNormal,
@@ -44,6 +45,7 @@ class BannerView extends StatefulWidget{
         this.controller,
         this.cycleRolling = true,
         this.autoRolling = true,
+        this.curve = Curves.easeInOut,
         this.onPageChanged,
     }): 
         assert(banners?.isNotEmpty ?? true), 
@@ -100,6 +102,11 @@ class _BannerViewState extends State<BannerView> {
         }
 
         this._cancel(manual: false);
+
+        //security check[for fuck the gesture notification handle]
+        if(_seriesUserScrollRecordCount != 0) {
+            return ;
+        }
         _timer = new Timer(_duration, () {
             this._doChangeIndex();
         });
@@ -133,13 +140,13 @@ class _BannerViewState extends State<BannerView> {
             this._pageController.animateToPage(
                 this._currentIndex, 
                 duration: widget.animationDuration,
-                curve: Curves.linear
+                curve: widget.curve,
             ).whenComplete(() {
                 if(!mounted) {
                     return;
                 }
 
-                _Logger.d(TAG, '=========animationEnd');
+                // _Logger.d(TAG, '=========animationEnd');
                 // this._nextBannerTask();
                 // setState(() {});
             });
@@ -182,72 +189,98 @@ class _BannerViewState extends State<BannerView> {
             controller: this._pageController,
             itemCount: this._banners.length,  
             onPageChanged: (index) {
-                _Logger.d(TAG, '**********   changed');
+                _Logger.d(TAG, '**********   changed  index: $index  cu: $_currentIndex');
                 this._currentIndex = index;
                 if(!(this._timer?.isActive ?? false)) {
                     this._nextBannerTask();
-                    setState(() {});
                 }
+                setState(() {});
                 if(null != widget.onPageChanged) {
                     widget.onPageChanged(index);
                 }
             },
             physics: new ClampingScrollPhysics(),
         );
+
         return new NotificationListener(
             child: pageView,
             onNotification: (notification) {
-                if(notification is UserScrollNotification) {
-                    UserScrollNotification sn = notification;
-                    
-                    PageMetrics pm = sn.metrics;
-                    var page = pm.page;
-                    var depth = sn.depth;
-                    
-                    var left = page % (page.round());
-                    if(_seriesUserScrollRecordCount == 0) {
-                        _Logger.d(TAG, '**********   ^^^^  用户手动滑动开始');
-                        this._cancel(manual: true);
-                    }
-                    if(depth == 0) {
-                        _Logger.d(TAG, '**  ${pm.extentBefore}  ${pm.extentAfter} : countP: $_seriesUserScrollRecordCount');
-                        
-                        if(left == 0) {
-                            if (_seriesUserScrollRecordCount != 0) {
-                                _Logger.d(TAG, '**********   ^^^^  用户手动滑动结束');
-                                _seriesUserScrollRecordCount = 0;
-                                _canceledByManual = false;
-                                this._nextBannerTask();
-                            }else {
-                                _seriesUserScrollRecordCount ++;
-                            }
-                        }else {
-                            _seriesUserScrollRecordCount ++;
-                        }
-                    }
-                }
-
-                if(notification is ScrollUpdateNotification) {
-                    ScrollUpdateNotification sn = notification;
-                    
-                    if(widget.cycleRolling && sn.metrics.atEdge) {
-                        _Logger.d(TAG, '>>>   had at edge');
-                        if(this._canceledByManual) {
-                            return;
-                        }
-                        try{
-                            if(this._currentIndex == 0) {
-                                this._pageController.jumpToPage(this._banners.length - 2);
-                            }else if(this._currentIndex == this._banners.length - 1) {
-                                this._pageController.jumpToPage(1);
-                            }
-                        }catch (e){
-                            print('Exception: ${e?.toString()}');
-                        }
-                    }
-                }
+                this._handleScrollNotification(notification);
             },
         );
+    }
+
+    void _handleScrollNotification(Notification notification) {
+        void _resetWhenAtEdge(PageMetrics pm) {
+            if(null == pm || !pm.atEdge) {
+                return;
+            }
+            if(!widget.cycleRolling) {
+                return;
+            }
+            try{
+                if(this._currentIndex == 0) {
+                    this._pageController.jumpToPage(this._banners.length - 2);
+                }else if(this._currentIndex == this._banners.length - 1) {
+                    this._pageController.jumpToPage(1);
+                }
+            }catch (e){
+                print('Exception: ${e?.toString()}');
+            }
+        }
+
+        void _handleUserScroll(UserScrollNotification notification) {
+            UserScrollNotification sn = notification;
+                    
+            PageMetrics pm = sn.metrics;
+            var page = pm.page;
+            var depth = sn.depth;
+            
+            var left = page == .0 ? .0 : page % (page.round());
+            
+            if(_seriesUserScrollRecordCount == 0) {
+                _Logger.d(TAG, '**********   ^^^^  用户手动滑动开始');
+                this._cancel(manual: true);
+            }
+            if(depth == 0) {
+                _Logger.d(TAG, '** countP: $_seriesUserScrollRecordCount  page: $page  , left: $left');
+                
+                if(left == 0) {
+                    if (_seriesUserScrollRecordCount != 0) {
+                        _Logger.d(TAG, '**********   ^^^^  用户手动滑动结束, at edge: ${pm.atEdge}');
+                        setState(() {
+                            _seriesUserScrollRecordCount = 0;
+                            _canceledByManual = false;
+                            _resetWhenAtEdge(pm);
+                        });
+                        this._nextBannerTask();
+                    }else {
+                        _seriesUserScrollRecordCount ++;
+                    }
+                }else {
+                    _seriesUserScrollRecordCount ++;
+                }
+            }
+        }
+
+        void _handleOtherScroll(ScrollUpdateNotification notification) {
+            ScrollUpdateNotification sn = notification;
+            if(widget.cycleRolling && sn.metrics.atEdge) {
+                _Logger.d(TAG, '>>>   had at edge  $_currentIndex');
+                if(this._canceledByManual) {
+                    return;
+                }
+                _resetWhenAtEdge(sn.metrics);
+            }
+        }
+
+        if(notification is UserScrollNotification) {
+
+            _handleUserScroll(notification);
+        }else if(notification is ScrollUpdateNotification) {
+
+            _handleOtherScroll(notification);
+        }
     }
 
     /// indicator widget
