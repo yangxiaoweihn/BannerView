@@ -2,7 +2,7 @@
 
 A flutter BannerView package project.
 ## Demo
-Visit Demo in ![here](https://github.com/yangxiaoweihn/BannerViewExample).
+Visit Demo in <span href="https://github.com/yangxiaoweihn/BannerViewExample">here</span>.
 ## function
 <table> 
     <tr>
