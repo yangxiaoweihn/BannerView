@@ -25,6 +25,34 @@ add in pubspec.yaml
 
 ```dart
     import 'package:banner_view/banner_view.dart';
-    new BannerView();
+    new Container(
+        alignment: Alignment.center,
+        height: 200.0,
+        child: new BannerView(
+            [...]
+        ),
+    );
+```
+support properties:
+```dart
+    final List<Widget> banners;
+    //init index
+    final int initIndex;
+    //switch interval
+    final Duration intervalDuration;
+    //animation duration
+    final Duration animationDuration;
+    final IndicatorContainerBuilder indicatorBuilder;
+    final Widget indicatorNormal;
+    final Widget indicatorSelected;
+    //the margin of between indicator items
+    final double indicatorMargin;
+    final PageController controller;
+    //whether cycyle rolling
+    final bool cycleRolling;
+    //whether auto rolling
+    final bool autoRolling;
+    final Curve curve;
+    final ValueChanged onPageChanged;
 ```
 ## Flutter QQ group ( 714494675 )
