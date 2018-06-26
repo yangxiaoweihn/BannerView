@@ -17,7 +17,7 @@ Visit Demo in <a href="https://github.com/yangxiaoweihn/BannerViewExample">here<
 ## Getting Started
 add in pubspec.yaml
 ```dart
-    banner_view: 1.1.1
+    banner_view: "^1.1.0"
     or
     banner_view: 
         git: https://github.com/yangxiaoweihn/BannerView.git
