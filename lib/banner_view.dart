@@ -32,6 +32,7 @@ class BannerView extends StatefulWidget{
     final bool autoRolling;
     final Curve curve;
     final ValueChanged onPageChanged;
+    final bool log;
 
     BannerView(this.banners, {
         Key key,
@@ -47,6 +48,7 @@ class BannerView extends StatefulWidget{
         this.autoRolling = true,
         this.curve = Curves.easeInOut,
         this.onPageChanged,
+        this.log = true,
     }): 
         assert(banners?.isNotEmpty ?? true), 
         assert(null != indicatorMargin),
@@ -71,6 +73,8 @@ class _BannerViewState extends State<BannerView> {
     @override
     void initState() {
         super.initState();
+        _Logger.debug = widget.log ?? true;
+        
         this._originBanners = widget.banners;
         this._banners = this._banners..addAll(this._originBanners);
         

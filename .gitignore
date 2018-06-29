@@ -8,4 +8,8 @@ build/
 ios/.generated/
 ios/Flutter/Generated.xcconfig
 ios/Runner/GeneratedPluginRegistrant.*
+<<<<<<< HEAD
 .idea/
+=======
+.idea/
+>>>>>>> f5fb80bed10447170b84f50922a762b2f4369a80
