@@ -92,11 +92,19 @@ class _BannerViewState extends State<BannerView> {
         this._duration = widget.intervalDuration;
         this._pageController = widget.controller ?? PageController(initialPage: this._currentIndex);
         
+        this._pageController.addListener(() {
+            // _Logger.d(TAG, "animation: ${_pageController?.page}");
+        });
+
         this._nextBannerTask();
     }
 
+    VoidCallback _callback = () {
+        // _Logger.d(TAG, "animation: ${_pageController?.page}");
+    };
+
     Timer _timer;
-    void _nextBannerTask() {
+    void _nextBannerTaskBy({int milliseconds = 0}) {
         if(!mounted) {
             return;
         }
@@ -107,38 +115,36 @@ class _BannerViewState extends State<BannerView> {
 
         this._cancel(manual: false);
 
-        //security check[for fuck the gesture notification handle]
-        if(_seriesUserScrollRecordCount != 0) {
-            return ;
-        }
-        _timer = new Timer(_duration, () {
+        _timer = new Timer(new Duration(milliseconds: _duration.inMilliseconds + milliseconds), () {
             this._doChangeIndex();
         });
     }
 
-    bool _canceledByManual = false;
+    void _nextBannerTask() {
+        this._nextBannerTaskBy(milliseconds: 0);
+    }
+
     /// [manual] 是否手动停止
     void _cancel({bool manual = false}) {
         _timer?.cancel();
-        if(manual) {
-            this._canceledByManual = true;
-        }
     }
 
     void _doChangeIndex({bool increment = true}) {
         if(!mounted) {
             return;
         }
-        this._canceledByManual = false;
         if(increment) {
             this._currentIndex++;
         }else{
             this._currentIndex--;
         }
         this._currentIndex = this._currentIndex % this._banners.length;
+        _Logger.d(TAG, "_doChangeIndex  ${_currentIndex}.");
         if(0 == this._currentIndex) {
-            this._pageController.jumpToPage(this._currentIndex);
-            this._nextBannerTask();
+            this._pageController.jumpToPage(this._currentIndex + 1);
+            this._nextBannerTaskBy(milliseconds: -_duration.inMilliseconds);
+          // this._pageController.animateToPage(this._currentIndex, duration: widget.animationDuration, curve: widget.curve);
+            // this._pageController.jumpToPage(this._currentIndex);
             setState(() {});
         }else{
             this._pageController.animateToPage(
@@ -173,8 +179,6 @@ class _BannerViewState extends State<BannerView> {
         );
     }
 
-    //tack the user scroll callback count in a series
-    int _seriesUserScrollRecordCount = 0;
     /// Banner container
     Widget _renderBannerBody() {
 
@@ -184,10 +188,10 @@ class _BannerViewState extends State<BannerView> {
                 Widget widget = this._banners[index];
                 return new GestureDetector(
                     child: widget,
-                    onTapDown: (detail) {
-                        _Logger.d(TAG, '**********   onTapDown');
-                        this._cancel(manual: true);
-                    }, 
+                    // onTapDown: (detail) {
+                    //     _Logger.d(TAG, '**********   onTapDown');
+                    //     this._cancel(manual: true);
+                    // },
                 );
             },  
             controller: this._pageController,
@@ -195,9 +199,10 @@ class _BannerViewState extends State<BannerView> {
             onPageChanged: (index) {
                 _Logger.d(TAG, '**********   changed  index: $index  cu: $_currentIndex');
                 this._currentIndex = index;
-                if(!(this._timer?.isActive ?? false)) {
-                    this._nextBannerTask();
-                }
+                // if(!(this._timer?.isActive ?? false)) {
+                //     this._nextBannerTask();
+                // }
+                this._nextBannerTask();
                 setState(() {});
                 if(null != widget.onPageChanged) {
                     widget.onPageChanged(index);
@@ -206,6 +211,7 @@ class _BannerViewState extends State<BannerView> {
             physics: new ClampingScrollPhysics(),
         );
 
+        // return pageView;
         return new NotificationListener(
             child: pageView,
             onNotification: (notification) {
@@ -228,6 +234,9 @@ class _BannerViewState extends State<BannerView> {
                 }else if(this._currentIndex == this._banners.length - 1) {
                     this._pageController.jumpToPage(1);
                 }
+                setState(() {
+                  
+                });
             }catch (e){
                 print('Exception: ${e?.toString()}');
             }
@@ -242,27 +251,13 @@ class _BannerViewState extends State<BannerView> {
             
             var left = page == .0 ? .0 : page % (page.round());
             
-            if(_seriesUserScrollRecordCount == 0) {
-                _Logger.d(TAG, '**********   ^^^^  用户手动滑动开始');
-                this._cancel(manual: true);
-            }
             if(depth == 0) {
-                _Logger.d(TAG, '** countP: $_seriesUserScrollRecordCount  page: $page  , left: $left');
+                _Logger.d(TAG, '**  page: $page  , left: $left');
                 
                 if(left == 0) {
-                    if (_seriesUserScrollRecordCount != 0) {
-                        _Logger.d(TAG, '**********   ^^^^  用户手动滑动结束, at edge: ${pm.atEdge}');
-                        setState(() {
-                            _seriesUserScrollRecordCount = 0;
-                            _canceledByManual = false;
-                            _resetWhenAtEdge(pm);
-                        });
-                        this._nextBannerTask();
-                    }else {
-                        _seriesUserScrollRecordCount ++;
-                    }
-                }else {
-                    _seriesUserScrollRecordCount ++;
+                    setState(() {
+                        _resetWhenAtEdge(pm);
+                    });
                 }
             }
         }
@@ -271,27 +266,56 @@ class _BannerViewState extends State<BannerView> {
             ScrollUpdateNotification sn = notification;
             if(widget.cycleRolling && sn.metrics.atEdge) {
                 _Logger.d(TAG, '>>>   had at edge  $_currentIndex');
-                if(this._canceledByManual) {
-                    return;
-                }
+                // if(this._canceledByManual) {
+                    // return;
+                // }
                 _resetWhenAtEdge(sn.metrics);
             }
         }
 
         if(notification is UserScrollNotification) {
+            if(_isEnd) {
+                _isEnd = false;
+                
+            }else {
+                _Logger.d(TAG, '#########   手动开始');
+                _isStartUser = true; 
+                this._cancel(manual: true);
+            }
+            // this._cancel(manual: true);
+            // _Logger.d(TAG, '#########   ${notification.runtimeType}');
 
             _handleUserScroll(notification);
         }else if(notification is ScrollUpdateNotification) {
+            // _Logger.d(TAG, '#########   ${notification.runtimeType}');
 
-            _handleOtherScroll(notification);
+            // _handleOtherScroll(notification);
+        }else if(notification is ScrollEndNotification) {
+            _Logger.d(TAG, '#########   ${notification.runtimeType}    ${_isStartUser}');
+
+            if(_isStartUser) {
+                _Logger.d(TAG, '#########   手动结束');
+                _isEnd = true;
+                _isStartUser = false;
+
+                // this._nextBannerTask();
+            } else {
+                _isEnd = false;
+            }
+
+            this._nextBannerTask();
         }
     }
+
+    bool _isEnd = false;
+    bool _isStartUser = false;
 
     /// indicator widget
     Widget _renderIndicator() {
         
         int index = widget.cycleRolling ? this._currentIndex - 1 : this._currentIndex;
         index = index <= 0 ? 0 : index;
+        index = index % _originBanners.length;
         return new IndicatorWidget(
             size: this._originBanners.length,
             currentIndex: index,
@@ -305,6 +329,7 @@ class _BannerViewState extends State<BannerView> {
     @override
     void dispose() {
         _pageController?.dispose();
+        _pageController?.removeListener(_callback);
         _cancel();
         super.dispose();
     }
