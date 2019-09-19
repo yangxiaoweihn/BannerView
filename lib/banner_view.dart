@@ -26,7 +26,7 @@ class BannerView extends StatefulWidget{
     //the margin of between indicator items
     final double indicatorMargin;
     final PageController controller;
-    //whether cycyle rolling
+    //whether cycle rolling
     final bool cycleRolling;
     //whether auto rolling
     final bool autoRolling;
@@ -74,7 +74,9 @@ class _BannerViewState extends State<BannerView> {
     void initState() {
         super.initState();
         _Logger.debug = widget.log ?? true;
-        
+
+        this._isActive = true;
+
         this._originBanners = widget.banners;
         this._banners = this._banners..addAll(this._originBanners);
         
@@ -92,16 +94,8 @@ class _BannerViewState extends State<BannerView> {
         this._duration = widget.intervalDuration;
         this._pageController = widget.controller ?? PageController(initialPage: this._currentIndex);
         
-        this._pageController.addListener(() {
-            // _Logger.d(TAG, "animation: ${_pageController?.page}");
-        });
-
         this._nextBannerTask();
     }
-
-    VoidCallback _callback = () {
-        // _Logger.d(TAG, "animation: ${_pageController?.page}");
-    };
 
     Timer _timer;
     void _nextBannerTaskBy({int milliseconds = 0}) {
@@ -113,7 +107,7 @@ class _BannerViewState extends State<BannerView> {
             return;
         }
 
-        this._cancel(manual: false);
+        this._cancel();
 
         _timer = new Timer(new Duration(milliseconds: _duration.inMilliseconds + milliseconds), () {
             this._doChangeIndex();
@@ -124,8 +118,7 @@ class _BannerViewState extends State<BannerView> {
         this._nextBannerTaskBy(milliseconds: 0);
     }
 
-    /// [manual] 是否手动停止
-    void _cancel({bool manual = false}) {
+    void _cancel() {
         _timer?.cancel();
     }
 
@@ -139,27 +132,17 @@ class _BannerViewState extends State<BannerView> {
             this._currentIndex--;
         }
         this._currentIndex = this._currentIndex % this._banners.length;
-        _Logger.d(TAG, "_doChangeIndex  ${_currentIndex}.");
+        _Logger.d(TAG, "_doChangeIndex  $_currentIndex .");
         if(0 == this._currentIndex) {
             this._pageController.jumpToPage(this._currentIndex + 1);
             this._nextBannerTaskBy(milliseconds: -_duration.inMilliseconds);
-          // this._pageController.animateToPage(this._currentIndex, duration: widget.animationDuration, curve: widget.curve);
-            // this._pageController.jumpToPage(this._currentIndex);
             setState(() {});
         }else{
             this._pageController.animateToPage(
                 this._currentIndex, 
                 duration: widget.animationDuration,
                 curve: widget.curve,
-            ).whenComplete(() {
-                if(!mounted) {
-                    return;
-                }
-
-                // _Logger.d(TAG, '=========animationEnd');
-                // this._nextBannerTask();
-                // setState(() {});
-            });
+            );
         }
     }
 
@@ -188,10 +171,6 @@ class _BannerViewState extends State<BannerView> {
                 Widget widget = this._banners[index];
                 return new GestureDetector(
                     child: widget,
-                    // onTapDown: (detail) {
-                    //     _Logger.d(TAG, '**********   onTapDown');
-                    //     this._cancel(manual: true);
-                    // },
                 );
             },  
             controller: this._pageController,
@@ -199,9 +178,6 @@ class _BannerViewState extends State<BannerView> {
             onPageChanged: (index) {
                 _Logger.d(TAG, '**********   changed  index: $index  cu: $_currentIndex');
                 this._currentIndex = index;
-                // if(!(this._timer?.isActive ?? false)) {
-                //     this._nextBannerTask();
-                // }
                 this._nextBannerTask();
                 setState(() {});
                 if(null != widget.onPageChanged) {
@@ -216,6 +192,7 @@ class _BannerViewState extends State<BannerView> {
             child: pageView,
             onNotification: (notification) {
                 this._handleScrollNotification(notification);
+                return true;
             },
         );
     }
@@ -234,11 +211,9 @@ class _BannerViewState extends State<BannerView> {
                 }else if(this._currentIndex == this._banners.length - 1) {
                     this._pageController.jumpToPage(1);
                 }
-                setState(() {
-                  
-                });
+                setState(() {});
             }catch (e){
-                print('Exception: ${e?.toString()}');
+                _Logger.d(TAG, 'Exception: ${e?.toString()}');
             }
         }
 
@@ -252,8 +227,8 @@ class _BannerViewState extends State<BannerView> {
             var left = page == .0 ? .0 : page % (page.round());
             
             if(depth == 0) {
-                _Logger.d(TAG, '**  page: $page  , left: $left');
-                
+                _Logger.d(TAG, '**  page: $page  , left: $left ,  atEdge: ${pm.atEdge} ,  index: $_currentIndex');
+
                 if(left == 0) {
                     setState(() {
                         _resetWhenAtEdge(pm);
@@ -262,53 +237,40 @@ class _BannerViewState extends State<BannerView> {
             }
         }
 
-        void _handleOtherScroll(ScrollUpdateNotification notification) {
-            ScrollUpdateNotification sn = notification;
-            if(widget.cycleRolling && sn.metrics.atEdge) {
-                _Logger.d(TAG, '>>>   had at edge  $_currentIndex');
-                // if(this._canceledByManual) {
-                    // return;
-                // }
-                _resetWhenAtEdge(sn.metrics);
-            }
-        }
-
         if(notification is UserScrollNotification) {
-            if(_isEnd) {
-                _isEnd = false;
+            if(_isStartByUser) {
+                return;
+            }
+            if(_isEndByUser) {
+                _isEndByUser = false;
                 
             }else {
                 _Logger.d(TAG, '#########   手动开始');
-                _isStartUser = true; 
-                this._cancel(manual: true);
+                _isStartByUser = true;
+                this._cancel();
             }
-            // this._cancel(manual: true);
-            // _Logger.d(TAG, '#########   ${notification.runtimeType}');
 
             _handleUserScroll(notification);
-        }else if(notification is ScrollUpdateNotification) {
-            // _Logger.d(TAG, '#########   ${notification.runtimeType}');
-
-            // _handleOtherScroll(notification);
         }else if(notification is ScrollEndNotification) {
-            _Logger.d(TAG, '#########   ${notification.runtimeType}    ${_isStartUser}');
+            _Logger.d(TAG, '#########   ${notification.runtimeType}    $_isStartByUser');
 
-            if(_isStartUser) {
+            if(_isEndByUser) {
+                return;
+            }
+            if(_isStartByUser) {
                 _Logger.d(TAG, '#########   手动结束');
-                _isEnd = true;
-                _isStartUser = false;
-
-                // this._nextBannerTask();
+                _isEndByUser = true;
+                _isStartByUser = false;
             } else {
-                _isEnd = false;
+                _isEndByUser = false;
             }
 
             this._nextBannerTask();
         }
     }
 
-    bool _isEnd = false;
-    bool _isStartUser = false;
+    bool _isEndByUser = false;
+    bool _isStartByUser = false;
 
     /// indicator widget
     Widget _renderIndicator() {
@@ -326,10 +288,22 @@ class _BannerViewState extends State<BannerView> {
         );
     }
 
+    bool _isActive = true;
+    @override
+    void deactivate() {
+        super.deactivate();
+        _isActive = !_isActive;
+        if(_isActive) {
+            _nextBannerTask();
+        } else {
+            _cancel();
+        }
+    }
+
     @override
     void dispose() {
+        _isActive = false;
         _pageController?.dispose();
-        _pageController?.removeListener(_callback);
         _cancel();
         super.dispose();
     }

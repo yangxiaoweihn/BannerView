@@ -1,5 +1,10 @@
 .DS_Store
 .dart_tool/
+banner_view.iml
+.vscode
+
+android
+ios
 
 .packages
 .pub/
@@ -9,3 +14,5 @@ ios/.generated/
 ios/Flutter/Generated.xcconfig
 ios/Runner/GeneratedPluginRegistrant.*
 .idea/
+
+example/
