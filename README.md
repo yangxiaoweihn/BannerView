@@ -1,8 +1,7 @@
 # banner_view
 
 A flutter BannerView package project.
-## Demo
-Visit Demo in <a href="https://github.com/yangxiaoweihn/BannerViewExample">here</a>.
+
 ## function
 <table> 
     <tr>
@@ -17,7 +16,7 @@ Visit Demo in <a href="https://github.com/yangxiaoweihn/BannerViewExample">here<
 ## Getting Started
 add in pubspec.yaml
 ```dart
-    banner_view: "^1.1.1"
+    banner_view: "^1.2.0"
     or
     banner_view: 
         git: https://github.com/yangxiaoweihn/BannerView.git
@@ -48,11 +47,12 @@ support properties:
     //the margin of between indicator items
     final double indicatorMargin;
     final PageController controller;
-    //whether cycyle rolling
+    //whether cycle rolling
     final bool cycleRolling;
     //whether auto rolling
     final bool autoRolling;
     final Curve curve;
     final ValueChanged onPageChanged;
+    final bool log;
 ```
 ## Flutter QQ group ( 714494675 )
